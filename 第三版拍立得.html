@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>复古拍立得相机</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* 闪光效果 */
+        .flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .flash.active {
+            animation: flashAnimation 0.3s ease-out;
+        }
+
+        @keyframes flashAnimation {
+            0% { opacity: 0.9; }
+            100% { opacity: 0; }
+        }
+
+        /* 相机主体 */
+        .camera {
+            position: relative;
+            width: 340px;
+            height: 420px;
+            background: linear-gradient(145deg, #2c2c2c 0%, #1a1a1a 50%, #0d0d0d 100%);
+            border-radius: 30px;
+            box-shadow: 
+                0 20px 60px rgba(0,0,0,0.4),
+                inset 0 2px 4px rgba(255,255,255,0.1),
+                inset 0 -2px 4px rgba(0,0,0,0.3);
+            padding: 20px;
+        }
+
+        /* 相机顶部装饰 */
+        .camera-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .flash-bulb {
+            width: 50px;
+            height: 35px;
+            background: linear-gradient(145deg, #e8e8e8 0%, #b8b8b8 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);
+        }
+
+        .flash-bulb-inner {
+            width: 30px;
+            height: 20px;
+            background: linear-gradient(145deg, #ff6b6b 0%, #ff4757 100%);
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+        }
+
+        .viewfinder {
+            width: 40px;
+            height: 25px;
+            background: linear-gradient(145deg, #333 0%, #111 100%);
+            border-radius: 5px;
+            border: 2px solid #444;
+        }
+
+        .brand {
+            color: #c4a35a;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* 镜头区域 */
+        .lens-area {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin: 0 auto 20px;
+            background: linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 
+                0 5px 20px rgba(0,0,0,0.5),
+                inset 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        .lens-ring {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 4px solid #444;
+            background: linear-gradient(145deg, #555 0%, #333 100%);
+        }
+
+        .lens-inner {
+            position: relative;
+            width: 170px;
+            height: 170px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid #222;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .lens-reflection {
+            position: absolute;
+            top: 10%;
+            left: 10%;
+            width: 30%;
+            height: 30%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* 快门按钮 */
+        .shutter-btn {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(145deg, #ff6b6b 0%, #ee5a5a 50%, #cc4444 100%);
+            border: 4px solid #333;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 
+                0 5px 15px rgba(0,0,0,0.4),
+                inset 0 2px 4px rgba(255,255,255,0.3);
+            transition: all 0.1s ease;
+            z-index: 10;
+        }
+
+        .shutter-btn:hover {
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 
+                0 8px 20px rgba(0,0,0,0.5),
+                inset 0 2px 4px rgba(255,255,255,0.3);
+        }
+
+        .shutter-btn:active {
+            transform: translateX(-50%) scale(0.95);
+            box-shadow: 
+                0 2px 8px rgba(0,0,0,0.4),
+                inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .shutter-btn-inner {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(145deg, #fff 0%, #eee 100%);
+            border-radius: 50%;
+            margin: 6px auto;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* 相机底部 */
+        .camera-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            padding: 0 10px;
+        }
+
+        .photo-slot {
+            width: 80px;
+            height: 12px;
+            background: linear-gradient(180deg, #111 0%, #333 50%, #111 100%);
+            border-radius: 2px;
+        }
+
+        .indicator {
+            display: flex;
+            gap: 8px;
+        }
+
+        .indicator-light {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #2ecc71;
+            box-shadow: 0 0 8px #2ecc71;
+            animation: blink 2s infinite;
+        }
+
+        .indicator-light.yellow {
+            background: #f1c40f;
+            box-shadow: 0 0 8px #f1c40f;
+            animation-delay: 0.5s;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* 图库 */
+        .gallery {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            max-height: 90vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 10px;
+            z-index: 100;
+        }
+
+        .gallery::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .gallery::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+
+        .gallery::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.5);
+            border-radius: 3px;
+        }
+
+        .gallery-title {
+            color: #333;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            background: rgba(255,255,255,0.8);
+            padding: 8px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .gallery-photo {
+            position: relative;
+            background: #fff;
+            padding: 8px 8px 25px 8px;
+            border-radius: 3px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transform: rotate(var(--rotation));
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .gallery-photo:hover {
+            transform: rotate(0deg) scale(1.1);
+            z-index: 10;
+        }
+
+        .gallery-photo img {
+            width: 100%;
+            display: block;
+            border-radius: 2px;
+        }
+
+        /* 删除按钮 */
+        .delete-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            background: #ff4757;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #fff;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 20;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .gallery-photo:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .delete-btn:hover {
+            transform: scale(1.15);
+            background: #ff2d3b;
+        }
+
+        /* 提示文字 */
+        .hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* 隐藏的 canvas */
+        #canvas {
+            display: none;
+        }
+
+        /* 错误提示 */
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff6b6b;
+            font-size: 12px;
+            text-align: center;
+            padding: 10px;
+        }
+
+        /* 确认对话框 */
+        .confirm-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        .confirm-dialog.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .confirm-content {
+            background: #fff;
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 300px;
+        }
+
+        .confirm-content p {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .confirm-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .confirm-buttons button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+
+        .confirm-buttons button:hover {
+            transform: translateY(-1px);
+        }
+
+        .confirm-buttons button:active {
+            transform: translateY(0);
+        }
+
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-confirm {
+            background: #ff4757;
+            color: #fff;
+        }
+
+        /* 响应式 */
+        @media (max-width: 600px) {
+            .camera {
+                width: 300px;
+                height: 380px;
+            }
+            
+            .lens-area {
+                width: 180px;
+                height: 180px;
+            }
+            
+            .lens-ring {
+                width: 160px;
+                height: 160px;
+            }
+            
+            .lens-inner {
+                width: 140px;
+                height: 140px;
+            }
+            
+            .gallery {
+                width: 120px;
+                top: 10px;
+                right: 10px;
+            }
+            
+            .gallery-title {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 闪光效果层 -->
+    <div class="flash" id="flash"></div>
+    
+    <!-- 确认删除对话框 -->
+    <div class="confirm-dialog" id="confirmDialog">
+        <div class="confirm-content">
+            <p>确定要删除这张照片吗？</p>
+            <div class="confirm-buttons">
+                <button class="btn-cancel" onclick="cancelDelete()">取消</button>
+                <button class="btn-confirm" onclick="confirmDelete()">删除</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 相机主体 -->
+    <div class="camera">
+        <!-- 相机顶部 -->
+        <div class="camera-top">
+            <div class="flash-bulb">
+                <div class="flash-bulb-inner"></div>
+            </div>
+            <div class="brand">POLAROID</div>
+            <div class="viewfinder"></div>
+        </div>
+        
+        <!-- 镜头区域 -->
+        <div class="lens-area">
+            <div class="lens-ring"></div>
+            <div class="lens-inner">
+                <video id="video" autoplay playsinline></video>
+                <div class="error-message" id="error" style="display: none;">
+                    请允许摄像头访问权限
+                </div>
+                <div class="lens-reflection"></div>
+            </div>
+            <!-- 快门按钮 -->
+            <button class="shutter-btn" id="shutter" onclick="capturePhoto()">
+                <div class="shutter-btn-inner"></div>
+            </button>
+        </div>
+        
+        <!-- 相机底部 -->
+        <div class="camera-bottom">
+            <div class="photo-slot"></div>
+            <div class="indicator">
+                <div class="indicator-light"></div>
+                <div class="indicator-light yellow"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 图库 -->
+    <div class="gallery" id="gallery">
+        <div class="gallery-title">我的照片</div>
+    </div>
+    
+    <!-- 提示 -->
+    <div class="hint">点击红色快门按钮拍照</div>
+    
+    <!-- 隐藏的 canvas -->
+    <canvas id="canvas"></canvas>
+    <canvas id="tempCanvas" style="display:none;"></canvas>
+    
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const tempCanvas = document.getElementById('tempCanvas');
+        const ctx = canvas.getContext('2d');
+        const tempCtx = tempCanvas.getContext('2d');
+        const flash = document.getElementById('flash');
+        const gallery = document.getElementById('gallery');
+        const error = document.getElementById('error');
+        const confirmDialog = document.getElementById('confirmDialog');
+        
+        let pendingDeleteElement = null;
+        let videoWidth = 0;
+        let videoHeight = 0;
+        
+        // 初始化摄像头 - 请求高分辨率
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1920 }
+                    },
+                    audio: false
+                });
+                video.srcObject = stream;
+                
+                // 获取实际视频分辨率
+                video.onloadedmetadata = function() {
+                    videoWidth = video.videoWidth;
+                    videoHeight = video.videoHeight;
+                };
+                
+                error.style.display = 'none';
+            } catch (err) {
+                console.error('摄像头访问失败:', err);
+                error.style.display = 'block';
+            }
+        }
+        
+        // 触发闪光效果
+        function triggerFlash() {
+            flash.classList.add('active');
+            setTimeout(() => {
+                flash.classList.remove('active');
+            }, 300);
+        }
+        
+        /**
+         * 简单高斯模糊实现（用于磨皮）
+         * 使用 3x3 高斯核进行卷积
+         */
+        function applyGaussianBlur(imageData, width, height) {
+            const data = imageData.data;
+            const output = new Uint8ClampedArray(data);
+            
+            // 3x3 高斯核（归一化）
+            const kernel = [
+                1/16, 2/16, 1/16,
+                2/16, 4/16, 2/16,
+                1/16, 2/16, 1/16
+            ];
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let r = 0, g = 0, b = 0;
+                    let ki = 0;
+                    
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const idx = ((y + ky) * width + (x + kx)) * 4;
+                            const weight = kernel[ki++];
+                            r += data[idx] * weight;
+                            g += data[idx + 1] * weight;
+                            b += data[idx + 2] * weight;
+                        }
+                    }
+                    
+                    const idx = (y * width + x) * 4;
+                    output[idx] = r;
+                    output[idx + 1] = g;
+                    output[idx + 2] = b;
+                }
+            }
+            
+            // 复制回原数组
+            for (let i = 0; i < data.length; i++) {
+                data[i] = output[i];
+            }
+            
+            return imageData;
+        }
+        
+        /**
+         * 肤色检测
+         * 基于 RGB 和 YCbCr 色彩空间判断
+         */
+        function isSkinPixel(r, g, b) {
+            // RGB 规则
+            const rgbRule = (r > 95) && (g > 40) && (b > 20) &&
+                           (Math.max(r, g, b) - Math.min(r, g, b) > 15) &&
+                           (Math.abs(r - g) > 15) && (r > g) && (r > b);
+            
+            // YCbCr 转换
+            const y = 0.299 * r + 0.587 * g + 0.114 * b;
+            const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+            const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+            
+            // YCbCr 规则
+            const ycbcrRule = (cb > 77 && cb < 127) && (cr > 133 && cr < 173);
+            
+            return rgbRule || ycbcrRule;
+        }
+        
+        /**
+         * 人像优化：磨皮 + 美白
+         * 基于像素级处理，仅对肤色区域应用效果
+         */
+        function applyBeautyFilter(imageData, width, height) {
+            const data = imageData.data;
+            
+            // 创建临时数据用于模糊
+            const tempData = new ImageData(new Uint8ClampedArray(data), width, height);
+            
+            // 应用两次高斯模糊以获得更平滑的效果
+            applyGaussianBlur(tempData, width, height);
+            applyGaussianBlur(tempData, width, height);
+            
+            const blurredData = tempData.data;
+            
+            // 磨皮强度 (0-1)
+            const smoothStrength = 0.4;
+            // 美白强度 (0-1)
+            const whitenStrength = 0.15;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                
+                // 仅对肤色区域应用美颜效果
+                if (isSkinPixel(r, g, b)) {
+                    // 磨皮：将原图与模糊图混合
+                    const blendR = r * (1 - smoothStrength) + blurredData[i] * smoothStrength;
+                    const blendG = g * (1 - smoothStrength) + blurredData[i + 1] * smoothStrength;
+                    const blendB = b * (1 - smoothStrength) + blurredData[i + 2] * smoothStrength;
+                    
+                    // 美白：提升亮度，轻微降低暗部
+                    // 使用曲线调整：较暗的像素提升更多
+                    const luminance = 0.299 * blendR + 0.587 * blendG + 0.114 * blendB;
+                    const whitenFactor = 1 + whitenStrength * (1 - luminance / 255);
+                    
+                    data[i] = Math.min(255, blendR * whitenFactor + whitenStrength * 15);
+                    data[i + 1] = Math.min(255, blendG * whitenFactor + whitenStrength * 12);
+                    data[i + 2] = Math.min(255, blendB * whitenFactor + whitenStrength * 10);
+                }
+            }
+            
+            return imageData;
+        }
+        
+        // 应用拍立得滤镜
+        function applyPolaroidFilter(imageData) {
+            const data = imageData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i];
+                let g = data[i + 1];
+                let b = data[i + 2];
+                
+                // 微曝光效果
+                r = Math.min(255, r * 1.08 + 10);
+                g = Math.min(255, g * 1.06 + 8);
+                b = Math.min(255, b * 1.04 + 5);
+                
+                // 对比度增强
+                const factor = 1.12;
+                r = Math.min(255, Math.max(0, factor * (r - 128) + 128));
+                g = Math.min(255, Math.max(0, factor * (g - 128) + 128));
+                b = Math.min(255, Math.max(0, factor * (b - 128) + 128));
+                
+                // 轻微颗粒感
+                const grain = (Math.random() - 0.5) * 15;
+                r = Math.min(255, Math.max(0, r + grain));
+                g = Math.min(255, Math.max(0, g + grain));
+                b = Math.min(255, Math.max(0, b + grain));
+                
+                // 轻微暖色调
+                r = Math.min(255, r + 4);
+                b = Math.max(0, b - 4);
+                
+                data[i] = r;
+                data[i + 1] = g;
+                data[i + 2] = b;
+            }
+            
+            return imageData;
+        }
+        
+        // 绘制随机涂鸦装饰
+        function drawDoodles(ctx, width, height, frameWidth) {
+            const colors = ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd', '#00d2d3', '#ff9f43'];
+            const decorations = 15 + Math.floor(Math.random() * 10);
+            
+            for (let i = 0; i < decorations; i++) {
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const size = 8 + Math.random() * 15;
+                
+                // 在边框区域随机位置
+                let x, y;
+                const side = Math.floor(Math.random() * 4);
+                
+                switch(side) {
+                    case 0: // 上边
+                        x = Math.random() * width;
+                        y = Math.random() * frameWidth * 0.8;
+                        break;
+                    case 1: // 下边
+                        x = Math.random() * width;
+                        y = height - frameWidth * 1.5 + Math.random() * frameWidth * 1.2;
+                        break;
+                    case 2: // 左边
+                        x = Math.random() * frameWidth * 0.8;
+                        y = Math.random() * height;
+                        break;
+                    case 3: // 右边
+                        x = width - frameWidth * 0.8 + Math.random() * frameWidth * 0.6;
+                        y = Math.random() * height;
+                        break;
+                }
+                
+                ctx.fillStyle = color;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                
+                // 随机绘制星星或爱心
+                if (Math.random() > 0.5) {
+                    drawStar(ctx, x, y, size);
+                } else {
+                    drawHeart(ctx, x, y, size);
+                }
+            }
+        }
+        
+        // 绘制星星
+        function drawStar(ctx, x, y, size) {
+            const spikes = 5;
+            const outerRadius = size;
+            const innerRadius = size / 2;
+            
+            ctx.beginPath();
+            for (let i = 0; i < spikes * 2; i++) {
+                const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                const angle = (i * Math.PI) / spikes - Math.PI / 2;
+                const px = x + Math.cos(angle) * radius;
+                const py = y + Math.sin(angle) * radius;
+                
+                if (i === 0) {
+                    ctx.moveTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // 绘制爱心
+        function drawHeart(ctx, x, y, size) {
+            ctx.beginPath();
+            const topCurveHeight = size * 0.3;
+            ctx.moveTo(x, y + topCurveHeight);
+            
+            // 左边曲线
+            ctx.bezierCurveTo(
+                x, y,
+                x - size / 2, y,
+                x - size / 2, y + topCurveHeight
+            );
+            ctx.bezierCurveTo(
+                x - size / 2, y + (size + topCurveHeight) / 2,
+                x, y + (size + topCurveHeight) / 2,
+                x, y + size
+            );
+            
+            // 右边曲线
+            ctx.bezierCurveTo(
+                x, y + (size + topCurveHeight) / 2,
+                x + size / 2, y + (size + topCurveHeight) / 2,
+                x + size / 2, y + topCurveHeight
+            );
+            ctx.bezierCurveTo(
+                x + size / 2, y,
+                x, y,
+                x, y + topCurveHeight
+            );
+            
+            ctx.fill();
+        }
+        
+        // 捕获照片
+        function capturePhoto() {
+            // 触发闪光
+            triggerFlash();
+            
+            // 使用原始视频分辨率（高质量）
+            const actualWidth = videoWidth || video.videoWidth || 1920;
+            const actualHeight = videoHeight || video.videoHeight || 1920;
+            
+            // 计算照片尺寸（保持高分辨率）
+            // 拍立得比例约为 1:1.15
+            const photoSize = Math.min(actualWidth, actualHeight);
+            const frameRatio = 0.06; // 边框比例
+            const bottomRatio = 0.18; // 底部边框比例
+            
+            const frameWidth = Math.round(photoSize * frameRatio);
+            const bottomFrame = Math.round(photoSize * bottomRatio);
+            const imageSize = photoSize - frameWidth * 2;
+            
+            const photoWidth = photoSize;
+            const photoHeight = photoSize + bottomFrame - frameWidth;
+            
+            canvas.width = photoWidth;
+            canvas.height = photoHeight;
+            
+            // 绘制白色拍立得边框
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, photoWidth, photoHeight);
+            
+            // 临时 canvas 用于处理原始图像
+            tempCanvas.width = imageSize;
+            tempCanvas.height = imageSize;
+            
+            // 计算裁剪区域（居中裁剪为正方形）
+            const sourceSize = Math.min(actualWidth, actualHeight);
+            const sourceX = (actualWidth - sourceSize) / 2;
+            const sourceY = (actualHeight - sourceSize) / 2;
+            
+            // 镜像翻转绘制视频帧到临时 canvas
+            tempCtx.save();
+            tempCtx.translate(imageSize, 0);
+            tempCtx.scale(-1, 1);
+            tempCtx.drawImage(video, sourceX, sourceY, sourceSize, sourceSize, 0, 0, imageSize, imageSize);
+            tempCtx.restore();
+            
+            // 获取图像数据并应用美颜效果
+            let imageData = tempCtx.getImageData(0, 0, imageSize, imageSize);
+            
+            // 应用人像优化（磨皮 + 美白）
+            imageData = applyBeautyFilter(imageData, imageSize, imageSize);
+            
+            // 应用拍立得滤镜
+            imageData = applyPolaroidFilter(imageData);
+            
+            // 将处理后的图像放回临时 canvas
+            tempCtx.putImageData(imageData, 0, 0);
+            
+            // 绘制到主 canvas
+            ctx.drawImage(tempCanvas, frameWidth, frameWidth, imageSize, imageSize);
+            
+            // 绘制涂鸦装饰
+            drawDoodles(ctx, photoWidth, photoHeight, frameWidth);
+            
+            // 添加底部日期
+            ctx.fillStyle = '#888';
+            const fontSize = Math.round(photoSize * 0.035);
+            ctx.font = `${fontSize}px "Comic Sans MS", cursive`;
+            const date = new Date().toLocaleDateString('zh-CN');
+            ctx.fillText(date, frameWidth, photoHeight - frameWidth);
+            
+            // 添加到图库（使用 PNG 格式，无损压缩）
+            addToGallery(canvas.toDataURL('image/png'));
+        }
+        
+        // 添加照片到图库
+        function addToGallery(dataUrl) {
+            const photoContainer = document.createElement('div');
+            photoContainer.className = 'gallery-photo';
+            
+            // 随机旋转角度
+            const rotation = (Math.random() - 0.5) * 10;
+            photoContainer.style.setProperty('--rotation', `${rotation}deg`);
+            
+            // 删除按钮
+            const deleteBtn = document.createElement('div');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.onclick = function(e) {
+                e.stopPropagation();
+                showDeleteConfirm(photoContainer);
+            };
+            
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.alt = '拍立得照片';
+            
+            // 点击下载
+            photoContainer.onclick = function() {
+                const link = document.createElement('a');
+                link.download = `polaroid_${Date.now()}.png`;
+                link.href = dataUrl;
+                link.click();
+            };
+            
+            photoContainer.appendChild(deleteBtn);
+            photoContainer.appendChild(img);
+            
+            // 插入到标题后面
+            const title = gallery.querySelector('.gallery-title');
+            if (title.nextSibling) {
+                gallery.insertBefore(photoContainer, title.nextSibling);
+            } else {
+                gallery.appendChild(photoContainer);
+            }
+            
+            // 添加出现动画
+            photoContainer.style.opacity = '0';
+            photoContainer.style.transform = `rotate(${rotation}deg) scale(0.5)`;
+            setTimeout(() => {
+                photoContainer.style.transition = 'all 0.4s ease-out';
+                photoContainer.style.opacity = '1';
+                photoContainer.style.transform = `rotate(${rotation}deg) scale(1)`;
+            }, 50);
+        }
+        
+        // 显示删除确认对话框
+        function showDeleteConfirm(element) {
+            pendingDeleteElement = element;
+            confirmDialog.classList.add('active');
+        }
+        
+        // 取消删除
+        function cancelDelete() {
+            pendingDeleteElement = null;
+            confirmDialog.classList.remove('active');
+        }
+        
+        // 确认删除
+        function confirmDelete() {
+            if (pendingDeleteElement) {
+                // 删除动画
+                pendingDeleteElement.style.transition = 'all 0.3s ease-out';
+                pendingDeleteElement.style.opacity = '0';
+                pendingDeleteElement.style.transform = 'scale(0.5)';
+                
+                setTimeout(() => {
+                    pendingDeleteElement.remove();
+                    pendingDeleteElement = null;
+                }, 300);
+            }
+            confirmDialog.classList.remove('active');
+        }
+        
+        // 启动相机
+        initCamera();
+    </script>
+</body>
+</html>
